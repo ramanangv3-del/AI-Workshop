@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Usage Counter</title>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #111827;
+    --border: #e5e7eb;
+    --danger: #b91c1c;
+    --warn: #92400e;
+    --focus: #2563eb;
+  }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -200px, #ffffff, var(--bg));
+    color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+  .wrap {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: 20px;
+    letter-spacing: 0.2px;
+  }
+  p.sub {
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+    background: #fff;
+  }
+  input[type="text"]:focus {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  button {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 80ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+  button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    border-color: #d1d5db;
+  }
+  button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+  }
+  .count {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 18px 0 8px;
+  }
+  .count .num {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+  }
+  .count .label {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .status {
+    min-height: 20px;
+    margin-top: 6px;
+    font-size: 14px;
+  }
+  .status[aria-live="polite"] { color: var(--muted); }
+  .status.warn { color: var(--warn); }
+  .status.error { color: var(--danger); }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+    border-radius: 1px;
+  }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .foot small {
+    color: var(--muted);
+  }
+  .right {
+    display: flex;
+    gap: 10px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="title">
+      <h1 id="title">Usage Counter</h1>
+      <p class="sub">Enter a name, press <strong>Start</strong> to save it (and auto-increment once). Use <strong>Increment</strong> to add more, <strong>Refresh</strong> to fetch the current count, and <strong>Forget</strong> to clear.</p>
+
+      <div class="row">
+        <input id="nameInput" type="text" inputmode="latin" autocomplete="off" spellcheck="false" placeholder="Name (e.g., alice)" aria-label="Name" />
+        <button id="startBtn" type="button">Start</button>
+      </div>
+
+      <div class="controls">
+        <button id="incBtn" type="button" disabled>Increment</button>
+        <button id="refreshBtn" type="button" disabled>Refresh</button>
+        <button id="forgetBtn" type="button" disabled>Forget</button>
+      </div>
+
+      <div class="count" aria-live="polite" aria-atomic="true">
+        <div class="num" id="countNum">–</div>
+        <div class="label" id="countLabel">current count</div>
+      </div>
+
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+
+      <div class="divider"></div>
+
+      <div class="foot">
+        <small id="stateHint">No name set.</small>
+        <div class="right">
+          <!-- reserved space for future inline hints -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+(() => {
+  const API_BASE = "https://api.magiqspark.com/counter/";
+  const els = {
+    name: document.getElementById("nameInput"),
+    start: document.getElementById("startBtn"),
+    inc: document.getElementById("incBtn"),
+    refresh: document.getElementById("refreshBtn"),
+    forget: document.getElementById("forgetBtn"),
+    countNum: document.getElementById("countNum"),
+    status: document.getElementById("status"),
+    hint: document.getElementById("stateHint"),
+  };
+
+  let savedName = null;
+  let inflight = null; // AbortController
+
+  function setStatus(msg, type = "") {
+    els.status.className = "status" + (type ? " " + type : "");
+    els.status.textContent = msg || "";
+  }
+
+  function setHint(msg) {
+    els.hint.textContent = msg || "";
+  }
+
+  function disableAll(disabled) {
+    els.inc.disabled = disabled;
+    els.refresh.disabled = disabled;
+    els.forget.disabled = disabled;
+  }
+
+  function updateUI() {
+    const hasName = !!savedName;
+    els.name.disabled = hasName;
+    els.start.disabled = !els.name.value.trim() || hasName;
+    disableAll(!hasName);
+    setHint(hasName ? `Using name “${savedName}”.` : "No name set.");
+  }
+
+  function abortInflight() {
+    if (inflight) {
+      try { inflight.abort(); } catch {}
+      inflight = null;
+    }
+  }
+
+  async function safeFetch(url, options = {}) {
+    abortInflight();
+    inflight = new AbortController();
+    options.signal = inflight.signal;
+    // Never surface request details in UI; only warnings/errors if something goes wrong.
+    const res = await fetch(url, options);
+    return res;
+  }
+
+  function parseJSONSafe(res) {
+    return res.text().then(t => {
+      try { return JSON.parse(t || "{}"); }
+      catch { return { raw: t || "" }; }
+    });
+  }
+
+  async function doPostIncrement(name) {
+    try {
+      const res = await safeFetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) {
+        const body = await parseJSONSafe(res);
+        const detail = body && (body.error || body.message || body.detail || body.raw) || `HTTP ${res.status}`;
+        setStatus(`Increment failed: ${detail}`, "error");
+        return false;
+      }
+      // Success: stay quiet (no success logs).
+      return true;
+    } catch (err) {
+      if (err.name === "AbortError") return false;
+      setStatus(`Network issue while incrementing.`, "warn");
+      return false;
+    }
+  }
+
+  async function doGetCount(name) {
+    try {
+      const res = await safeFetch(`${API_BASE}?name=${encodeURIComponent(name)}`);
+      if (!res.ok) {
+        const body = await parseJSONSafe(res);
+        const detail = body && (body.error || body.message || body.detail || body.raw) || `HTTP ${res.status}`;
+        setStatus(`Refresh failed: ${detail}`, "error");
+        return null;
+      }
+      const data = await res.json().catch(() => ({}));
+      const count = (data && (data.count ?? data.value ?? data.total)) ?? null;
+      if (typeof count === "number") {
+        els.countNum.textContent = String(count);
+        setStatus(""); // clear any prior warning/error on success
+        return count;
+      } else {
+        setStatus(`Unexpected response format.`, "warn");
+        return null;
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return null;
+      setStatus(`Network issue while refreshing.`, "warn");
+      return null;
+    }
+  }
+
+  async function startFlow() {
+    const name = els.name.value.trim();
+    if (!name) return;
+    savedName = name;
+    updateUI();
+    // Auto increment once, then fetch current count.
+    await doPostIncrement(savedName);
+    await doGetCount(savedName);
+  }
+
+  async function incrementFlow() {
+    if (!savedName) return;
+    const ok = await doPostIncrement(savedName);
+    if (ok) await doGetCount(savedName);
+  }
+
+  async function refreshFlow() {
+    if (!savedName) return;
+    await doGetCount(savedName);
+  }
+
+  function forgetFlow() {
+    abortInflight();
+    savedName = null;
+    els.name.disabled = false;
+    els.name.value = "";
+    els.countNum.textContent = "–";
+    setStatus("");
+    updateUI();
+  }
+
+  // Wire up events
+  els.start.addEventListener("click", startFlow);
+  els.inc.addEventListener("click", incrementFlow);
+  els.refresh.addEventListener("click", refreshFlow);
+  els.forget.addEventListener("click", forgetFlow);
+  els.name.addEventListener("input", () => updateUI());
+  els.name.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !els.start.disabled) startFlow();
+  });
+
+  // Support ?name=foo auto-start
+  (function autoStartFromQuery() {
+    const params = new URLSearchParams(location.search);
+    const qName = params.get("name");
+    if (qName && qName.trim()) {
+      els.name.value = qName.trim();
+      updateUI();
+      // Defer to allow rendering first
+      setTimeout(startFlow, 0);
+    } else {
+      updateUI();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
